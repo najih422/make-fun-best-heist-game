@@ -3,13 +3,13 @@
 // dossier.json with buildDossier from vendor/makefun-game.ts.
 // Deterministic: the same inputs always produce the same bytes.
 
-import { cpSync, existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildDossier } from './vendor/makefun-game.ts';
 
 const here = dirname(fileURLToPath(import.meta.url));
-const out = process.env.MAKEFUN_OUTPUT_DIR ?? '/output';
+const out = process.env.MAKEFUN_OUTPUT_DIR || '/output';
 
 const CAPS = {
   text_max_bytes: 163840,
@@ -28,7 +28,13 @@ if (!existsSync(shotsDir)) {
   throw new Error('main.ts: screenshots/ is missing');
 }
 
-rmSync(out, { recursive: true, force: true });
+// Clear only the CONTENTS of the output dir, never the dir itself:
+// in the grader /output is a mount point the runner cannot remove,
+// and rmSync(out) on it throws (EACCES/EBUSY) -> exit code 1.
+mkdirSync(out, { recursive: true });
+for (const entry of readdirSync(out)) {
+  rmSync(join(out, entry), { recursive: true, force: true });
+}
 mkdirSync(join(out, 'game'), { recursive: true });
 mkdirSync(join(out, 'screenshots'), { recursive: true });
 cpSync(gameDir, join(out, 'game'), { recursive: true });
