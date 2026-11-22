@@ -12,9 +12,49 @@ const sounds = new SoundBank();
 
 let state = createGame();
 
+// --- Input state, module scope so a restart can reset it ---
+// Touch feeds the same input object as the keyboard: joystick ->
+// mx/my (analog, player.js normalises), SNEAK is a latching stance,
+// DASH/SMOKE/USE are one-frame pulses like Space/F/E.
+let joyX = 0;
+let joyY = 0;
+let sneakToggle = false;
+let dashQ = false;
+let smokeQ = false;
+let interactQ = false;
+let coinTarget = null;
+let joyPointer = null;
+let lastBtnPress = 0; // when the START button was last pressed (ms)
+let pressPos = null; // where the last canvas press started (client px)
+let pressTime = 0; // when that press started (ms)
+let joyEl = null;
+let knobEl = null;
+let sneakBtn = null;
+
+// A fresh game must start with clean input: a finger still on the
+// (now hidden) joystick when the player is busted leaves joyX/joyY
+// stuck, so the new game walks by itself; a latched SNEAK (and any
+// queued pulse) would carry over the same way.
+function resetInputSticky() {
+  joyX = 0;
+  joyY = 0;
+  sneakToggle = false;
+  dashQ = false;
+  smokeQ = false;
+  interactQ = false;
+  coinTarget = null;
+  joyPointer = null;
+  pressPos = null;
+  if (knobEl) knobEl.style.transform = 'translate(-50%, -50%)';
+  if (sneakBtn) sneakBtn.classList.remove('on');
+}
+
 function startGame() {
-  if (state.status === 'title') state.status = 'playing';
-  else if (state.status === 'win' || state.status === 'busted') {
+  if (state.status === 'title') {
+    resetInputSticky();
+    state.status = 'playing';
+  } else if (state.status === 'win' || state.status === 'busted') {
+    resetInputSticky();
     state = createGame();
     state.status = 'playing';
   }
@@ -28,26 +68,17 @@ if (shot) {
   // page is exactly the staged state.
 } else {
   const keys = new Set();
-  let coinTarget = null;
 
   // --- Touch controls (only wired on touch devices) ---
   // The overlay in index.html stays hidden on desktop, so screenshots
-  // and the desktop game are untouched. Touch feeds the same input
-  // object as the keyboard: joystick -> mx/my (analog, player.js
-  // normalises), SNEAK is a latching stance, DASH/SMOKE/USE are
-  // one-frame pulses like Space/F/E.
+  // and the desktop game are untouched.
   const isTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
-  let joyX = 0;
-  let joyY = 0;
-  let sneakToggle = false;
-  let dashQ = false;
-  let smokeQ = false;
-  let interactQ = false;
   if (isTouch) {
     document.body.classList.add('touch');
-    const joyEl = document.getElementById('joy');
-    const knobEl = document.getElementById('knob');
-    let joyPointer = null;
+    joyEl = document.getElementById('joy');
+    knobEl = document.getElementById('knob');
+    sneakBtn = document.getElementById('btn-sneak');
+    const DEADZONE = 0.12; // tiny accidental offsets must not move Rook
     const joyMove = (e) => {
       const r = joyEl.getBoundingClientRect();
       const cx = r.left + r.width / 2;
@@ -55,6 +86,12 @@ if (shot) {
       let dx = (e.clientX - cx) / (r.width / 2);
       let dy = (e.clientY - cy) / (r.height / 2);
       const len = Math.hypot(dx, dy);
+      if (len < DEADZONE) {
+        joyX = 0;
+        joyY = 0;
+        knobEl.style.transform = 'translate(-50%, -50%)';
+        return;
+      }
       if (len > 1) {
         dx /= len;
         dy /= len;
@@ -65,6 +102,10 @@ if (shot) {
       knobEl.style.transform = `translate(-50%, -50%) translate(${dx * maxOff}px, ${dy * maxOff}px)`;
     };
     joyEl.addEventListener('pointerdown', (e) => {
+      // A second finger on the joystick must not steal the first
+      // finger's pointer (its pointerup would then be ignored and
+      // the joystick would stick).
+      if (joyPointer !== null) return;
       e.preventDefault();
       joyPointer = e.pointerId;
       joyEl.setPointerCapture(e.pointerId);
@@ -101,9 +142,13 @@ if (shot) {
     });
     bindBtn('btn-sneak', () => {
       sneakToggle = !sneakToggle;
-      document.getElementById('btn-sneak').classList.toggle('on', sneakToggle);
+      sneakBtn.classList.toggle('on', sneakToggle);
     });
     bindBtn('btn-start', () => {
+      // Tapping START hides the button; the tap's click retargets
+      // to the canvas, so the canvas click handler ignores clicks
+      // for a moment after a START press (see below).
+      lastBtnPress = performance.now();
       startGame();
     });
   }
@@ -117,17 +162,36 @@ if (shot) {
     keys.add(e.code);
     if (e.code === 'Enter') startGame();
     if (e.code === 'KeyR' && state.status !== 'title') {
+      resetInputSticky();
       state = createGame();
       state.status = 'playing';
     }
   });
   window.addEventListener('keyup', (e) => keys.delete(e.code));
+  // Where a canvas press started, so a drag (press and release far
+  // apart) can be told apart from a tap in the click handler below.
   canvas.addEventListener('pointerdown', (e) => {
-    // A press on the title / win / busted screens must not queue a
-    // coin that fires on the first frame of the next game.
-    // pointerdown, not click: tapping START hides the button and the
-    // click retargets to the canvas, throwing a stray coin.
     if (state.status !== 'playing') return;
+    if (e.button !== 0) return; // primary button only
+    pressPos = { x: e.clientX, y: e.clientY };
+    pressTime = performance.now();
+  });
+  canvas.addEventListener('click', (e) => {
+    // A click on the title / win / busted screens must not queue a
+    // coin that fires on the first frame of the next game.
+    if (state.status !== 'playing') return;
+    // Tapping START hides the button and the tap's click retargets
+    // to the canvas; ignore clicks for a moment after a START press.
+    // (click, not pointerdown: a mouse drag must not throw a coin,
+    // right-click must not throw one, and a synthetic el.click()
+    // from an automated player must still work.)
+    if (performance.now() - lastBtnPress < 200) return;
+    // A drag fires a click too, but its release is far from the
+    // press; only a tap (release near the press) throws a coin. A
+    // synthetic click has no recent press, so it is always allowed.
+    if (pressPos && performance.now() - pressTime < 500) {
+      if (Math.hypot(e.clientX - pressPos.x, e.clientY - pressPos.y) > 12) return;
+    }
     sounds.ensure();
     const rect = canvas.getBoundingClientRect();
     coinTarget = {

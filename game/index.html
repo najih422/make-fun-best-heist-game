@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 <title>The Meridian Job — a heist game</title>
 <style>
   body {
@@ -41,14 +41,14 @@
     display: flex;
     justify-content: space-between;
     align-items: flex-end;
-    padding: 4cqw;
+    padding: max(4cqw, 16px);
     box-sizing: border-box;
   }
   #touch .joy {
     pointer-events: auto;
     position: relative;
-    width: 11cqw;
-    height: 11cqw;
+    width: max(11cqw, 64px);
+    height: max(11cqw, 64px);
     border-radius: 50%;
     background: rgba(255, 255, 255, 0.08);
     border: 2px solid rgba(255, 255, 255, 0.25);
@@ -58,26 +58,26 @@
     position: absolute;
     left: 50%;
     top: 50%;
-    width: 5cqw;
-    height: 5cqw;
+    width: max(5cqw, 28px);
+    height: max(5cqw, 28px);
     border-radius: 50%;
     background: rgba(255, 255, 255, 0.35);
     transform: translate(-50%, -50%);
   }
   #touch .pad {
     display: grid;
-    grid-template-columns: repeat(2, 7.5cqw);
-    gap: 2cqw;
+    grid-template-columns: repeat(2, max(7.5cqw, 48px));
+    gap: max(2cqw, 8px);
   }
   #touch .btn {
     pointer-events: auto;
-    width: 7.5cqw;
-    height: 7.5cqw;
+    width: max(7.5cqw, 48px);
+    height: max(7.5cqw, 48px);
     border-radius: 50%;
     border: 2px solid rgba(255, 255, 255, 0.3);
     background: rgba(255, 255, 255, 0.12);
     color: #fff;
-    font: 600 1.9cqw/1 system-ui, sans-serif;
+    font: 600 max(1.9cqw, 12px)/1 system-ui, sans-serif;
     padding: 0;
     touch-action: none;
   }
@@ -93,9 +93,9 @@
     transform: translateX(-50%);
     width: auto;
     height: auto;
-    padding: 2cqw 5cqw;
+    padding: max(2cqw, 10px) max(5cqw, 22px);
     border-radius: 6cqw;
-    font-size: 2.6cqw;
+    font-size: max(2.6cqw, 14px);
     display: none;
   }
   #stage[data-status="title"] #btn-start,
