@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <title>The Meridian Job — a heist game</title>
 <style>
   body {
@@ -11,19 +12,117 @@
     align-items: center;
     justify-content: center;
     min-height: 100vh;
+    overflow: hidden;
+  }
+  #stage {
+    position: relative;
+    width: min(1280px, 100vw, calc(100vh * 16 / 9));
+    aspect-ratio: 16 / 9;
+    container-type: inline-size;
+    touch-action: none;
   }
   canvas {
     display: block;
-    width: 1280px;
-    height: 720px;
-    max-width: 100vw;
-    max-height: 100vh;
-    object-fit: contain;
+    width: 100%;
+    height: 100%;
+    touch-action: none;
   }
+  #touch {
+    position: absolute;
+    inset: 0;
+    display: none;
+    pointer-events: none;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+    z-index: 2;
+  }
+  body.touch #touch {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    padding: 4cqw;
+    box-sizing: border-box;
+  }
+  #touch .joy {
+    pointer-events: auto;
+    position: relative;
+    width: 11cqw;
+    height: 11cqw;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.08);
+    border: 2px solid rgba(255, 255, 255, 0.25);
+    touch-action: none;
+  }
+  #touch .joy .knob {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 5cqw;
+    height: 5cqw;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.35);
+    transform: translate(-50%, -50%);
+  }
+  #touch .pad {
+    display: grid;
+    grid-template-columns: repeat(2, 7.5cqw);
+    gap: 2cqw;
+  }
+  #touch .btn {
+    pointer-events: auto;
+    width: 7.5cqw;
+    height: 7.5cqw;
+    border-radius: 50%;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    background: rgba(255, 255, 255, 0.12);
+    color: #fff;
+    font: 600 1.9cqw/1 system-ui, sans-serif;
+    padding: 0;
+    touch-action: none;
+  }
+  #touch .btn:active { background: rgba(255, 255, 255, 0.3); }
+  #touch .btn.on {
+    background: rgba(120, 255, 120, 0.35);
+    border-color: rgba(120, 255, 120, 0.7);
+  }
+  #touch #btn-start {
+    position: absolute;
+    left: 50%;
+    bottom: 5cqw;
+    transform: translateX(-50%);
+    width: auto;
+    height: auto;
+    padding: 2cqw 5cqw;
+    border-radius: 6cqw;
+    font-size: 2.6cqw;
+    display: none;
+  }
+  #stage[data-status="title"] #btn-start,
+  #stage[data-status="win"] #btn-start,
+  #stage[data-status="busted"] #btn-start { display: block; }
+  #stage[data-status="title"] .joy,
+  #stage[data-status="title"] .pad,
+  #stage[data-status="win"] .joy,
+  #stage[data-status="win"] .pad,
+  #stage[data-status="busted"] .joy,
+  #stage[data-status="busted"] .pad { display: none; }
 </style>
 </head>
 <body>
-<canvas id="game" width="1280" height="720"></canvas>
+<div id="stage" data-status="title">
+  <canvas id="game" width="1280" height="720"></canvas>
+  <div id="touch">
+    <div class="joy" id="joy"><div class="knob" id="knob"></div></div>
+    <div class="pad">
+      <button class="btn" id="btn-smoke" type="button">SMOKE</button>
+      <button class="btn" id="btn-interact" type="button">USE</button>
+      <button class="btn" id="btn-sneak" type="button">SNEAK</button>
+      <button class="btn" id="btn-dash" type="button">DASH</button>
+    </div>
+    <button class="btn" id="btn-start" type="button">START</button>
+  </div>
+</div>
 <script type="module" src="./src/main.js"></script>
 </body>
 </html>
